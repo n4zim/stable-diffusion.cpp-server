@@ -57,6 +57,8 @@ async fn generate_image(
   body: web::Json<ImageGenerationRequest>,
   context: web::Data<Context>,
 ) -> HttpResponse {
+  println!("[REQUEST] {:?}", body);
+
   if let Err(response) = verify_bearer_token(&req, &context.token) {
     return response;
   }
