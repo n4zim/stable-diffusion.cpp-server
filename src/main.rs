@@ -26,6 +26,7 @@ struct Context {
   token: String,
   binary_path: String,
   args: Option<Vec<String>>,
+  force_scale: Option<i32>,
   models_dir: String,
   cache_dir: String,
 }
@@ -44,6 +45,9 @@ impl Default for Context {
       args: std::env::var("SD_CPP_SERVER_ARGS")
         .ok()
         .map(|s| s.split_whitespace().map(|s| s.to_string()).collect()),
+      force_scale: std::env::var("SD_CPP_SERVER_FORCE_SCALE")
+        .ok()
+        .and_then(|s| s.parse::<i32>().ok()),
       models_dir: std::env::var("SD_CPP_SERVER_MODELS")
         .expect("SD_CPP_SERVER_MODELS environment variable not set"),
       cache_dir: std::env::var("SD_CPP_SERVER_CACHE")
@@ -83,7 +87,12 @@ async fn generate_image(
   cmd.arg("-p").arg(&body.prompt);
   cmd.arg("-o").arg(&output_path);
   cmd.arg("--steps").arg(body.steps.to_string());
-  cmd.arg("--cfg-scale").arg(body.cfg_scale.to_string());
+
+  if let Some(force_scale) = context.force_scale {
+    cmd.arg("--cfg-scale").arg(force_scale.to_string());
+  } else {
+    cmd.arg("--cfg-scale").arg(body.cfg_scale.to_string());
+  }
 
   if body.seed >= 0 {
     cmd.arg("--seed").arg(body.seed.to_string());
