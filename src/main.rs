@@ -99,30 +99,37 @@ async fn generate_image(
     cmd.arg("-H").arg(size_parts[1]);
   }
 
+  println!("[COMMAND] {:?}", cmd);
+
   match cmd.output().await {
     Ok(output) => {
       if output.status.success() {
+        println!("[OUTPUT] {:?}", output);
         match tokio::fs::read(&output_path).await {
           Ok(image_data) => {
-            let b64 = base64::Engine::encode(
+            let b64_json = base64::Engine::encode(
               &base64::engine::general_purpose::STANDARD,
               &image_data,
             );
             let _ = tokio::fs::remove_file(&output_path).await;
             HttpResponse::Ok().json(ImageGenerationResponse {
               created: timestamp,
-              data: vec![ImageData { b64_json: b64 }],
+              data: vec![ImageData { b64_json }],
             })
           }
-          Err(e) => HttpResponse::InternalServerError().json(ErrorResponse {
-            error: ErrorDetail {
-              message: format!("Failed to read output image: {}", e),
-              error_type: "server_error".to_string(),
-            },
-          }),
+          Err(e) => {
+            println!("[ERROR/READ] {:?}", e);
+            HttpResponse::InternalServerError().json(ErrorResponse {
+              error: ErrorDetail {
+                message: format!("Failed to read output image: {}", e),
+                error_type: "server_error".to_string(),
+              },
+            })
+          }
         }
       } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        println!("[ERROR/OUTPUT] {:?}", stderr);
         HttpResponse::InternalServerError().json(ErrorResponse {
           error: ErrorDetail {
             message: format!("Image generation failed: {}", stderr),
@@ -131,12 +138,15 @@ async fn generate_image(
         })
       }
     }
-    Err(e) => HttpResponse::InternalServerError().json(ErrorResponse {
-      error: ErrorDetail {
-        message: format!("Failed to execute sd command: {}", e),
-        error_type: "server_error".to_string(),
-      },
-    }),
+    Err(e) => {
+      println!("[ERROR/EXECUTE] {:?}", e);
+      HttpResponse::InternalServerError().json(ErrorResponse {
+        error: ErrorDetail {
+          message: format!("Failed to execute sd command: {}", e),
+          error_type: "server_error".to_string(),
+        },
+      })
+    }
   }
 }
 
