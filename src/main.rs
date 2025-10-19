@@ -25,6 +25,7 @@ struct Context {
   port: u16,
   token: String,
   binary_path: String,
+  diffusion: bool,
   args: Option<Vec<String>>,
   force_scale: Option<i32>,
   models_dir: String,
@@ -40,14 +41,21 @@ impl Default for Context {
         .expect("SD_CPP_SERVER_PORT must be a valid port number"),
       token: std::env::var("SD_CPP_SERVER_TOKEN")
         .expect("SD_CPP_SERVER_TOKEN environment variable not set"),
+
       binary_path: std::env::var("SD_CPP_SERVER_BINARY")
         .expect("SD_CPP_SERVER_BINARY environment variable not set"),
+
+      diffusion: std::env::var("SD_CPP_SERVER_DIFFUSION")
+        .unwrap_or_else(|_| "0".to_string())
+        == "1",
+
       args: std::env::var("SD_CPP_SERVER_ARGS")
         .ok()
         .map(|s| s.split_whitespace().map(|s| s.to_string()).collect()),
       force_scale: std::env::var("SD_CPP_SERVER_FORCE_SCALE")
         .ok()
         .and_then(|s| s.parse::<i32>().ok()),
+
       models_dir: std::env::var("SD_CPP_SERVER_MODELS")
         .expect("SD_CPP_SERVER_MODELS environment variable not set"),
       cache_dir: std::env::var("SD_CPP_SERVER_CACHE")
@@ -81,9 +89,15 @@ async fn generate_image(
       cmd.arg(arg);
     }
   }
-  cmd
-    .arg("-m")
-    .arg(format!("{}/{}.gguf", context.models_dir, body.model));
+
+  let model = format!("{}/{}.gguf", context.models_dir, body.model);
+
+  if context.diffusion {
+    cmd.arg("--diffusion-model").arg(&model);
+  } else {
+    cmd.arg("-m").arg(&model);
+  }
+
   cmd.arg("-p").arg(&body.prompt);
   cmd.arg("-o").arg(&output_path);
   cmd.arg("--steps").arg(body.steps.to_string());
