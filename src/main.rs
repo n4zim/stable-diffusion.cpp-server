@@ -7,9 +7,7 @@ use tokio::process::Command;
 async fn main() -> std::io::Result<()> {
   let context = Context::default();
   let port = context.port;
-
-  println!("Starting stable-diffusion.cpp server on port {}...", port);
-
+  println!("Starting stable-diffusion.cpp server on port {port}...");
   HttpServer::new(move || {
     App::new()
       .app_data(web::Data::new(context.clone()))
@@ -79,7 +77,7 @@ async fn generate_image(
   }
   cmd
     .arg("-m")
-    .arg(format!("{}/{}", context.models_dir, body.model));
+    .arg(format!("{}/{}.gguf", context.models_dir, body.model));
   cmd.arg("-p").arg(&body.prompt);
   cmd.arg("-o").arg(&output_path);
   cmd.arg("--steps").arg(body.steps.to_string());
